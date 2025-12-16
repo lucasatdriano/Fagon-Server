@@ -13,8 +13,12 @@ import {
   Query,
   Put,
   Logger,
+  Req,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import {
+  AnyFilesInterceptor,
+  FilesInterceptor,
+} from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -33,6 +37,7 @@ import { UpdatePhotoDto } from './dto/update-photo.dto';
 import { StorageService } from '../../storage/storage.service';
 import { JwtPayload } from '../../common/interfaces/jwt.payload.interface';
 import { RotatePhotoDto } from './dto/rotate-photo.dto';
+import multer from 'multer';
 
 @ApiTags('Photos')
 @ApiBearerAuth()
@@ -48,13 +53,22 @@ export class PhotoController {
   ) {}
 
   @Post('upload/:locationId')
-  @UseInterceptors(FilesInterceptor('files', 10))
-  @ApiOperation({ summary: 'Faz upload de fotos para uma localização' })
-  @ApiResponse({
-    status: 201,
-    type: [PhotoResponseDto],
-    description: 'Fotos enviadas com sucesso',
-  })
+  @UseInterceptors(
+    FilesInterceptor('files', 10, {
+      storage: multer.memoryStorage(),
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 10MB
+      },
+      fileFilter: (req, file, cb) => {
+        // Aceita todas as imagens
+        if (file.mimetype.startsWith('image/')) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException('Apenas imagens são permitidas'), false);
+        }
+      },
+    }),
+  )
   async uploadPhotos(
     @UploadedFiles() files: Express.Multer.File[],
     @Param('locationId') locationId: string,
@@ -185,5 +199,51 @@ export class PhotoController {
     @CurrentUser() currentUser: JwtPayload,
   ) {
     return this.photoService.deletePhoto(id, currentUser);
+  }
+
+  @Post('debug-upload/:locationId')
+  @UseInterceptors(AnyFilesInterceptor())
+  @ApiOperation({ summary: 'Debug endpoint para upload' })
+  debugUpload(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Param('locationId') locationId: string,
+    @Req() req: Request,
+  ) {
+    this.logger.log('=== DEBUG UPLOAD START ===');
+
+    // Log dos arquivos recebidos
+    this.logger.log(`📁 Total de arquivos: ${files?.length || 0}`);
+
+    if (files && files.length > 0) {
+      files.forEach((file, index) => {
+        this.logger.log(`📸 Arquivo ${index + 1}:`, {
+          fieldname: file.fieldname, // ← NOME DO CAMPO QUE CHEGOU
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+        });
+      });
+    } else {
+      this.logger.warn('⚠️ Nenhum arquivo recebido via @UploadedFiles()');
+
+      // Verificar se chegou em req.files
+      const reqFiles = (req as any).files;
+      if (reqFiles) {
+        this.logger.log('🔍 Arquivos em req.files:', reqFiles);
+      }
+
+      // Verificar req.body
+      this.logger.log('🔍 req.body:', req.body);
+    }
+
+    this.logger.log('=== DEBUG UPLOAD END ===');
+
+    return {
+      success: true,
+      message: 'Debug recebido',
+      fileCount: files?.length || 0,
+      fieldNames: files?.map((f) => f.fieldname) || [],
+      locationId,
+    };
   }
 }
