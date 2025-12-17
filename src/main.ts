@@ -60,21 +60,7 @@ async function bootstrap() {
       skipNullProperties: true,
     }),
   );
-  app.useGlobalPipes(
-    new ValidationPipe({
-      disableErrorMessages: false,
-      transform: true,
-      whitelist: false,
-      forbidNonWhitelisted: false,
-      transformOptions: {
-        enableImplicitConversion: true,
-      },
-      skipMissingProperties: false,
-      forbidUnknownValues: false,
-      skipUndefinedProperties: true,
-      skipNullProperties: true,
-    }),
-  );
+
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
