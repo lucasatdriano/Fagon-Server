@@ -32,8 +32,6 @@ import { UpdatePhotoDto } from './dto/update-photo.dto';
 import { StorageService } from '../../storage/storage.service';
 import { JwtPayload } from '../../common/interfaces/jwt.payload.interface';
 import { RotatePhotoDto } from './dto/rotate-photo.dto';
-import { UploadResponseDto } from './dto/upload-photo.dto';
-import { UploadStatusResponseDto } from './dto/upload-status-response.dto';
 
 @ApiTags('Photos')
 @ApiBearerAuth()
@@ -50,32 +48,32 @@ export class PhotoController {
 
   @Post('upload/:locationId')
   @UseInterceptors(FilesInterceptor('files', 10))
-  @ApiOperation({ summary: 'Upload de fotos (processamento assíncrono)' })
+  @ApiOperation({ summary: 'Upload de fotos' })
   @ApiResponse({
-    status: 202,
-    description: 'Upload recebido, processando em background',
-    type: UploadResponseDto,
+    status: 201,
+    description: 'Fotos enviadas com sucesso',
+    type: [PhotoResponseDto],
   })
   async uploadPhotos(
     @UploadedFiles() files: Express.Multer.File[],
     @Param('locationId') locationId: string,
-  ): Promise<UploadResponseDto> {
-    return this.photoService.startUploadProcess(files, locationId);
-  }
+  ): Promise<PhotoResponseDto[]> {
+    const photos = await this.photoService.uploadPhotos(files, locationId);
 
-  @Get('upload-status/:processId')
-  @ApiOperation({
-    summary: 'Verifica status do upload processado em background',
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'Status do processamento',
-    type: UploadStatusResponseDto,
-  })
-  getUploadStatus(
-    @Param('processId') processId: string,
-  ): UploadStatusResponseDto {
-    return this.photoService.getUploadStatus(processId);
+    return Promise.all(
+      photos.map(async (photo) => ({
+        id: photo.id,
+        name: photo.name || 'Foto sem nome',
+        filePath: photo.filePath,
+        selectedForPdf: photo.selectedForPdf,
+        locationId: photo.locationId,
+        signedUrl: await this.storageService.getSignedUrl(photo.filePath),
+        location: {
+          id: locationId,
+          name: photo.location.name,
+        },
+      })),
+    );
   }
 
   @Get('location/:locationId')
@@ -110,26 +108,6 @@ export class PhotoController {
       updatePhotoDto.selectedForPdf,
       currentUser,
     );
-  }
-
-  @Get(':id/signed-url')
-  @ApiOperation({ summary: 'Obtém URL assinada para uma foto' })
-  @ApiResponse({
-    status: 200,
-    description: 'URL assinada gerada com sucesso',
-    schema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-      },
-    },
-  })
-  async getSignedUrl(
-    @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<{ url: string }> {
-    const photo = await this.photoService.getPhotoById(id);
-    const signedUrl = await this.storageService.getSignedUrl(photo.filePath);
-    return { url: signedUrl };
   }
 
   @Put(':id/rotate')

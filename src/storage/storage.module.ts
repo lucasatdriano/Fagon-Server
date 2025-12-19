@@ -30,7 +30,7 @@ import { MulterModule } from '@nestjs/platform-express';
           throw new Error('Supabase URL and Secret Key must be provided');
         }
 
-        return createClient(url, key);
+        return createClient(url, key) as SupabaseClient;
       },
       inject: [ConfigService],
     },

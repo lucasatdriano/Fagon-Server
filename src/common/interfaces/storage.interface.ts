@@ -1,6 +1,6 @@
 import { Readable } from 'stream';
 
-export interface FileMetadata {
+interface FileMetadata {
   contentType: string;
   contentLength: number;
   originalName: string;
@@ -15,14 +15,4 @@ export interface FileStreamResult {
 export interface FileBufferResult {
   buffer: Buffer;
   metadata: FileMetadata;
-}
-
-export interface StorageResult {
-  url: string;
-  key: string;
-  metadata: {
-    size: number;
-    mimetype: string;
-    uploadedAt: Date;
-  };
 }

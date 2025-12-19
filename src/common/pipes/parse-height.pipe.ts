@@ -2,20 +2,17 @@ import { PipeTransform, Injectable } from '@nestjs/common';
 
 @Injectable()
 export class ParseHeightObjectPipe implements PipeTransform {
-  transform(value: any): any {
+  transform(value: unknown): unknown {
     if (value === null || value === undefined) {
       return value;
     }
 
-    // Se não for objeto, retorna como está
-    if (typeof value !== 'object') {
+    if (typeof value !== 'object' || Array.isArray(value)) {
       return value;
     }
 
-    // Cria uma cópia do objeto
-    const result = { ...value };
+    const result = { ...value } as Record<string, unknown>;
 
-    // Converte apenas o campo height se existir
     if ('height' in result) {
       result.height = this.parseHeightValue(result.height);
     }
@@ -23,7 +20,7 @@ export class ParseHeightObjectPipe implements PipeTransform {
     return result;
   }
 
-  private parseHeightValue(value: any): number | null {
+  private parseHeightValue(value: unknown): number | null {
     if (value === null || value === undefined || value === '') {
       return null;
     }

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ResponseInspectorDto } from '../inspectors/dto/response-inspectors.dto';
 import { AgencyResponseDto } from '../agencies/dto/response-agency.dto';
 
-export interface DistanceResult {
+interface DistanceResult {
   distance: number;
   duration: number;
   status: string;

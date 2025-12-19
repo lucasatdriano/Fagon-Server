@@ -38,7 +38,6 @@ export class StorageService {
       let uploadBuffer = file.buffer;
       const originalSize = file.buffer.length;
 
-      // Otimizar imagem se for imagem e menor que 5MB
       if (
         file.mimetype.startsWith('image/') &&
         file.buffer.length < 5 * 1024 * 1024

@@ -1,13 +1,13 @@
 import type * as sharp from 'sharp';
 import type { Job } from 'bull';
 
-export enum ImageJobType {
+enum ImageJobType {
   RESIZE = 'resize-image',
   COMPRESS = 'compress-image',
   CONVERT = 'convert-image',
 }
 
-export interface ResizeImageData {
+interface ResizeImageData {
   inputPath: string;
   outputPath: string;
   width: number;
@@ -15,13 +15,13 @@ export interface ResizeImageData {
   options?: sharp.ResizeOptions;
 }
 
-export interface CompressImageData {
+interface CompressImageData {
   inputPath: string;
   outputPath: string;
   quality: number;
 }
 
-export interface ConvertImageData {
+interface ConvertImageData {
   inputPath: string;
   outputPath: string;
   format: keyof sharp.FormatEnum;
