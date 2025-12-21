@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { FileUpload, StorageResult } from './types/file-upload.type';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { ConfigService } from '@nestjs/config';
@@ -12,6 +12,7 @@ import sharp from 'sharp';
 
 @Injectable()
 export class StorageService {
+  private readonly logger = new Logger(StorageService.name);
   private readonly bucketName: string;
   private readonly MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 
@@ -20,36 +21,60 @@ export class StorageService {
     private config: ConfigService,
   ) {
     this.bucketName = this.config.getOrThrow<string>('SUPABASE_STORAGE_BUCKET');
+    this.logger.log(
+      `🪣 Storage Service inicializado com bucket: ${this.bucketName}`,
+    );
   }
 
   async uploadFile(file: FileUpload, bucket?: string): Promise<StorageResult> {
     const targetBucket = bucket || this.bucketName;
+    this.logger.debug(`📤 Iniciando upload para bucket: ${targetBucket}`);
 
     try {
+      this.logger.debug('🔍 Validando upload...');
       await this.validateUpload(file, targetBucket);
+      this.logger.debug('✅ Validação concluída');
 
       let uploadBuffer = file.buffer;
+      const originalSize = file.buffer.length;
 
       if (
         file.mimetype.startsWith('image/') &&
         file.buffer.length < 5 * 1024 * 1024
       ) {
+        this.logger.debug('🖼️ Otimizando imagem...');
         try {
+          const format = this.getOriginalFormat(file.mimetype);
+          this.logger.debug(`📐 Formatando para: ${format}`);
+
           uploadBuffer = await this.optimizeImage(file.buffer, {
             quality: 80,
             width: 1200,
-            format: this.getOriginalFormat(file.mimetype),
+            format: format,
           });
-        } catch {
-          console.warn('❌ Erro na otimização, usando original:');
+
+          this.logger.debug(`📊 Otimização concluída:`, {
+            originalSize: `${(originalSize / 1024 / 1024).toFixed(2)}MB`,
+            optimizedSize: `${(uploadBuffer.length / 1024 / 1024).toFixed(2)}MB`,
+            reduction: `${((1 - uploadBuffer.length / originalSize) * 100).toFixed(1)}%`,
+          });
+        } catch (optimizeError) {
+          this.logger.warn(
+            '⚠️ Erro na otimização, usando original:',
+            optimizeError,
+          );
           uploadBuffer = file.buffer;
         }
       } else {
-        uploadBuffer = file.buffer;
+        this.logger.debug(
+          `📦 Arquivo não otimizado (${file.mimetype}, ${(originalSize / 1024 / 1024).toFixed(2)}MB)`,
+        );
       }
 
       const filePath = this.generateFilePath(file);
+      this.logger.debug(`📝 Caminho gerado: ${filePath}`);
 
+      this.logger.debug('🚀 Enviando para Supabase Storage...');
       const { error } = await this.supabase.storage
         .from(targetBucket)
         .upload(filePath, uploadBuffer, {
@@ -57,10 +82,18 @@ export class StorageService {
           upsert: false,
         });
 
-      if (error) throw new Error(`Upload failed: ${error.message}`);
+      if (error) {
+        this.logger.error('❌ Erro no upload do Supabase:', error);
+        throw new Error(`Upload failed: ${error.message}`);
+      }
 
-      return {
-        url: await this.getSignedUrl(filePath),
+      this.logger.debug(
+        '✅ Upload Supabase concluído, gerando URL assinada...',
+      );
+      const signedUrl = await this.getSignedUrl(filePath);
+
+      const result: StorageResult = {
+        url: signedUrl,
         key: filePath,
         metadata: {
           size: uploadBuffer.length,
@@ -68,26 +101,41 @@ export class StorageService {
           uploadedAt: new Date(),
         },
       };
+
+      this.logger.log(
+        `🎉 Upload concluído: ${filePath} (${(uploadBuffer.length / 1024 / 1024).toFixed(2)}MB)`,
+      );
+      return result;
     } catch (error: unknown) {
+      this.logger.error('💥 Erro no uploadFile:', error);
       this.handleUploadError(error);
     }
   }
 
   private async validateUpload(file: FileUpload, bucket: string) {
+    this.logger.debug(`🔐 Verificando existência do bucket: ${bucket}`);
     const { data: bucketExists, error: bucketError } =
       await this.supabase.storage.getBucket(bucket);
 
     if (bucketError || !bucketExists) {
+      this.logger.error(`❌ Bucket não encontrado: ${bucket}`, bucketError);
       throw new Error(
         `Bucket "${bucket}" não encontrado. Crie-o no painel do Supabase.`,
       );
     }
+    this.logger.debug('✅ Bucket validado');
 
     if (!file.buffer || file.buffer.length === 0) {
+      this.logger.error('❌ Arquivo vazio recebido');
       throw new Error('Arquivo vazio');
     }
 
     if (file.size > this.MAX_FILE_SIZE) {
+      this.logger.error(`❌ Arquivo muito grande:`, {
+        fileSize: file.size,
+        maxSize: this.MAX_FILE_SIZE,
+        fileName: file.originalname,
+      });
       throw new Error(
         `Tamanho do arquivo excede o limite de ${this.MAX_FILE_SIZE} bytes`,
       );
@@ -102,10 +150,17 @@ export class StorageService {
     ];
 
     if (!allowedMimeTypes.includes(file.mimetype)) {
+      this.logger.error(`❌ Tipo de arquivo não permitido:`, {
+        mimetype: file.mimetype,
+        allowedTypes: allowedMimeTypes,
+        fileName: file.originalname,
+      });
       throw new Error(
         'Tipo de arquivo não suportado. São permitidos: JPEG, PNG, GIF, WEBP, PDF',
       );
     }
+
+    this.logger.debug('✅ Validações de arquivo concluídas');
   }
 
   private generateFilePath(file: FileUpload): string {
@@ -234,6 +289,9 @@ export class StorageService {
     bucket?: string,
   ): Promise<FileBufferResult> {
     const targetBucket = bucket || this.bucketName;
+    this.logger.debug(
+      `📥 Buscando arquivo: ${filePath} do bucket: ${targetBucket}`,
+    );
 
     try {
       const { data, error } = await this.supabase.storage
@@ -241,15 +299,22 @@ export class StorageService {
         .download(filePath);
 
       if (error) {
-        console.error('❌ Erro do Supabase:', error);
+        this.logger.error('❌ Erro do Supabase ao baixar:', {
+          filePath,
+          error: error.message,
+        });
         throw new Error(`Falha ao baixar arquivo: ${error.message}`);
       }
 
       if (!data) {
+        this.logger.error('❌ Nenhum dado retornado do Supabase:', filePath);
         throw new Error('Nenhum dado retornado do Supabase');
       }
 
       const buffer = Buffer.from(await data.arrayBuffer());
+      this.logger.debug(
+        `✅ Arquivo baixado: ${filePath} (${buffer.length} bytes)`,
+      );
 
       const fileName = filePath.split('/').pop() || 'file.jpg';
 
@@ -262,7 +327,11 @@ export class StorageService {
         },
       };
     } catch (error) {
-      console.error('💥 Erro crítico no getFileBuffer:', error);
+      this.logger.error('💥 Erro crítico no getFileBuffer:', {
+        filePath,
+        bucket: targetBucket,
+        error,
+      });
       throw error;
     }
   }

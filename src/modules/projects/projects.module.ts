@@ -7,6 +7,8 @@ import { EngineerModule } from '../engineers/engineers.module';
 import { LogModule } from '../logs/logs.module';
 import { PathologyModule } from '../pathologies/pathologies.module';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { UniqueUpeValidationPipe } from 'src/common/pipes/unique-upe-validation.pipe';
+import { UniqueUpeValidatorService } from 'src/common/validation/unique-upe-validation.service';
 
 @Module({
   imports: [
@@ -18,7 +20,11 @@ import { PrismaModule } from '../../prisma/prisma.module';
     LogModule,
   ],
   controllers: [ProjectController],
-  providers: [ProjectService],
+  providers: [
+    ProjectService,
+    UniqueUpeValidatorService,
+    UniqueUpeValidationPipe,
+  ],
   exports: [ProjectService],
 })
 export class ProjectModule {}

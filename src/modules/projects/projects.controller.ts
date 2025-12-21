@@ -30,6 +30,7 @@ import {
 import { JwtPayload } from '../../common/interfaces/jwt.payload.interface';
 import { JwtAuthGuard } from '../../auth/guards/auth.guard';
 import { RolesGuard } from '../../auth/guards/roles.guard';
+import { UniqueUpeValidationPipe } from 'src/common/pipes/unique-upe-validation.pipe';
 
 @ApiTags('Projects')
 @ApiBearerAuth()
@@ -47,7 +48,7 @@ export class ProjectController {
     description: 'Project successfully created',
   })
   create(
-    @Body() createProjectDto: CreateProjectDto,
+    @Body(UniqueUpeValidationPipe) createProjectDto: CreateProjectDto,
     @CurrentUser() currentUser: JwtPayload,
   ) {
     return this.projectService.create(createProjectDto, currentUser);

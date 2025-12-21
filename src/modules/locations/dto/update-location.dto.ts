@@ -19,9 +19,20 @@ export class UpdateLocationDto extends PartialType(CreateLocationDto) {
   pavementId?: string;
 
   @Expose()
-  @ApiProperty({ required: false })
+  @ApiProperty({
+    required: false,
+    description: 'Altura em metros',
+    example: 2.55,
+    type: Number,
+  })
   @IsOptional()
-  @IsNumber()
+  @Type(() => Number)
+  @IsNumber(
+    {},
+    {
+      message: 'Height must be a valid number between 0 and 1000',
+    },
+  )
   height?: number | null;
 
   @Expose()

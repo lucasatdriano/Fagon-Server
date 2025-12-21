@@ -6,7 +6,7 @@ import chromium from '@sparticuz/chromium';
 import { getPdfOptions } from './pdf-options.factory';
 import { getPdfConfig } from './pdf-type.utils';
 
-export interface GeneratePdfOptions {
+interface GeneratePdfOptions {
   headerType?: string;
   includeFooter?: boolean;
 }

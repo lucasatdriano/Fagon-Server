@@ -2,7 +2,7 @@ import * as puppeteer from 'puppeteer';
 import { getHeaderTemplate } from './pdf-header-templates';
 import { getFooterTemplate } from './pdf-footer-templates';
 
-export interface PdfOptionsConfig {
+interface PdfOptionsConfig {
   headerType?: string;
   includeFooter?: boolean;
   logoBase64?: string;

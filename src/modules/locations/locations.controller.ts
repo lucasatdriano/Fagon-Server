@@ -26,6 +26,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { ROLES } from '../../common/constants/roles.constant';
 import { LocationService } from './locations.service';
 import { JwtPayload } from '../../common/interfaces/jwt.payload.interface';
+import { ParseHeightObjectPipe } from 'src/common/pipes/parse-height.pipe';
 
 @ApiTags('Locations')
 @ApiBearerAuth()
@@ -88,7 +89,7 @@ export class LocationController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: JwtPayload,
-    @Body() updateLocationDto: UpdateLocationDto,
+    @Body(ParseHeightObjectPipe) updateLocationDto: UpdateLocationDto,
   ) {
     return this.locationService.update(id, updateLocationDto, currentUser.sub);
   }

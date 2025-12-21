@@ -5,11 +5,17 @@ import { setupSwagger } from './docs/swagger.config';
 import { PrismaService } from './prisma/prisma.service';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import * as dotenv from 'dotenv';
+import * as bodyParser from 'body-parser';
 
 dotenv.config();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger:
+      process.env.NODE_ENV === 'production'
+        ? ['warn', 'error', 'log']
+        : ['verbose', 'debug', 'log', 'warn', 'error'],
+  });
   const prismaService = app.get(PrismaService);
   const logger = new Logger('Bootstrap');
   const port = process.env.PORT || 3000;
@@ -41,17 +47,23 @@ async function bootstrap() {
   });
   app.useGlobalPipes(
     new ValidationPipe({
-      disableErrorMessages: false,
+      disableErrorMessages: process.env.NODE_ENV === 'production',
       transform: true,
-      whitelist: false,
-      forbidNonWhitelisted: false,
+      whitelist: true,
+      forbidNonWhitelisted: true,
       transformOptions: {
         enableImplicitConversion: true,
       },
       skipMissingProperties: false,
       forbidUnknownValues: false,
+      skipUndefinedProperties: true,
+      skipNullProperties: true,
     }),
   );
+
+  app.use(bodyParser.json({ limit: '50mb' }));
+  app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
+
   await app.listen(port);
   logger.log(`Application running on port ${port}`);
 }

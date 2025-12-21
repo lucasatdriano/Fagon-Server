@@ -9,9 +9,9 @@ import {
   Body,
   Patch,
   UploadedFiles,
-  BadRequestException,
   Query,
   Put,
+  Logger,
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import {
@@ -39,6 +39,8 @@ import { RotatePhotoDto } from './dto/rotate-photo.dto';
 @Roles(ROLES.ADMIN, ROLES.FUNCIONARIO, ROLES.VISTORIADOR)
 @Controller('photos')
 export class PhotoController {
+  private readonly logger = new Logger(PhotoController.name);
+
   constructor(
     private readonly photoService: PhotoService,
     private readonly storageService: StorageService,
@@ -46,21 +48,32 @@ export class PhotoController {
 
   @Post('upload/:locationId')
   @UseInterceptors(FilesInterceptor('files', 10))
-  @ApiOperation({ summary: 'Faz upload de fotos para uma localização' })
+  @ApiOperation({ summary: 'Upload de fotos' })
   @ApiResponse({
     status: 201,
-    type: [PhotoResponseDto],
     description: 'Fotos enviadas com sucesso',
+    type: [PhotoResponseDto],
   })
   async uploadPhotos(
     @UploadedFiles() files: Express.Multer.File[],
     @Param('locationId') locationId: string,
-  ) {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('Nenhum arquivo enviado');
-    }
+  ): Promise<PhotoResponseDto[]> {
+    const photos = await this.photoService.uploadPhotos(files, locationId);
 
-    return this.photoService.uploadPhotos(files, locationId);
+    return Promise.all(
+      photos.map(async (photo) => ({
+        id: photo.id,
+        name: photo.name || 'Foto sem nome',
+        filePath: photo.filePath,
+        selectedForPdf: photo.selectedForPdf,
+        locationId: photo.locationId,
+        signedUrl: await this.storageService.getSignedUrl(photo.filePath),
+        location: {
+          id: locationId,
+          name: photo.location.name,
+        },
+      })),
+    );
   }
 
   @Get('location/:locationId')
@@ -73,7 +86,7 @@ export class PhotoController {
   async getPhotosByLocation(
     @Param('locationId', ParseUUIDPipe) locationId: string,
     @Query('signed') signed: string,
-  ) {
+  ): Promise<PhotoResponseDto[]> {
     return this.photoService.getPhotosByLocation(locationId, signed === 'true');
   }
 
@@ -89,30 +102,12 @@ export class PhotoController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() updatePhotoDto: UpdatePhotoDto,
     @CurrentUser() currentUser: JwtPayload,
-  ) {
+  ): Promise<PhotoResponseDto> {
     return this.photoService.updatePhoto(
       id,
       updatePhotoDto.selectedForPdf,
       currentUser,
     );
-  }
-
-  @Get(':id/signed-url')
-  @ApiOperation({ summary: 'Obtém URL assinada para uma foto' })
-  @ApiResponse({
-    status: 200,
-    description: 'URL assinada gerada com sucesso',
-    schema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-      },
-    },
-  })
-  async getSignedUrl(@Param('id', ParseUUIDPipe) id: string) {
-    const photo = await this.photoService.getPhotoById(id);
-    const signedUrl = await this.storageService.getSignedUrl(photo.filePath);
-    return { url: signedUrl };
   }
 
   @Put(':id/rotate')
@@ -127,7 +122,7 @@ export class PhotoController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() rotatePhotoDto: RotatePhotoDto,
     @CurrentUser() currentUser: JwtPayload,
-  ) {
+  ): Promise<PhotoResponseDto> {
     return this.photoService.rotatePhoto(
       id,
       rotatePhotoDto.rotation,
@@ -152,7 +147,7 @@ export class PhotoController {
   async deletePhoto(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() currentUser: JwtPayload,
-  ) {
+  ): Promise<{ success: boolean; message: string }> {
     return this.photoService.deletePhoto(id, currentUser);
   }
 }
