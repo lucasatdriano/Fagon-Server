@@ -66,6 +66,7 @@ async function main() {
       {
         state: 'Acre',
         stateName: 'do Acre',
+        stateNormalized: 'acre',
         primaryLawReference: 'NT Nº 08/2025',
         secondaryLawReference: 'NT Nº 10/2025',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -78,6 +79,7 @@ async function main() {
       {
         state: 'Alagoas',
         stateName: 'de Alagoas',
+        stateNormalized: 'alagoas',
         primaryLawReference: 'IT Nº 08/2021',
         secondaryLawReference: 'IT Nº 10/2021',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -90,6 +92,7 @@ async function main() {
       {
         state: 'Amapá',
         stateName: 'do Amapá',
+        stateNormalized: 'amapa',
         primaryLawReference: 'NT Nº 021/2020',
         secondaryLawReference: 'NT Nº 022/2020',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -102,6 +105,7 @@ async function main() {
       {
         state: 'Amazonas',
         stateName: 'do Amazonas',
+        stateNormalized: 'amazonas',
         primaryLawReference: 'IT Nº 08/2025',
         secondaryLawReference: 'IT Nº 10/2025',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -114,6 +118,7 @@ async function main() {
       {
         state: 'Bahia',
         stateName: 'da Bahia',
+        stateNormalized: 'bahia',
         primaryLawReference: 'IT Nº 08/2016',
         secondaryLawReference: 'IT Nº 10/2016',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -126,6 +131,7 @@ async function main() {
       {
         state: 'Ceará',
         stateName: 'do Ceará',
+        stateNormalized: 'ceara',
         primaryLawReference: 'NT Nº 01/2024',
         secondaryLawReference: 'NT Nº 01/2024',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -138,6 +144,7 @@ async function main() {
       {
         state: 'Distrito Federal',
         stateName: 'do Distrito Federal',
+        stateNormalized: 'distrito federal',
         primaryLawReference: 'NT Nº 14/2022',
         secondaryLawReference: 'NT Nº 17/2022',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -150,6 +157,7 @@ async function main() {
       {
         state: 'Espírito Santo',
         stateName: 'do Espírito Santo',
+        stateNormalized: 'espirito santo',
         primaryLawReference: 'NT Nº 21/2022',
         secondaryLawReference: 'NT Nº 21/2022',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -162,6 +170,7 @@ async function main() {
       {
         state: 'Goiás',
         stateName: 'de Goiás',
+        stateNormalized: 'goias',
         primaryLawReference: 'NT Nº 08/2022',
         secondaryLawReference: 'NT Nº 10/2022',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -174,6 +183,7 @@ async function main() {
       {
         state: 'Maranhão',
         stateName: 'do Maranhão',
+        stateNormalized: 'maranhao',
         primaryLawReference: 'NT Nº 08/2021',
         secondaryLawReference: 'NT Nº 10/2021',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -186,6 +196,7 @@ async function main() {
       {
         state: 'Mato Grosso',
         stateName: 'do Mato Grosso',
+        stateNormalized: 'mato grosso',
         primaryLawReference: 'NT Nº 12/2020',
         secondaryLawReference: 'NT Nº 12/2020',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -198,6 +209,7 @@ async function main() {
       {
         state: 'Mato Grosso do Sul',
         stateName: 'do Mato Grosso do Sul',
+        stateNormalized: 'mato grosso do sul',
         primaryLawReference: 'NT Nº 08/2013',
         secondaryLawReference: 'NT Nº 10/2013',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -210,6 +222,7 @@ async function main() {
       {
         state: 'Minas Gerais',
         stateName: 'de Minas Gerais',
+        stateNormalized: 'minas gerais',
         primaryLawReference: 'IT Nº 06/2020',
         secondaryLawReference: 'IT Nº 38/2020',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -222,6 +235,7 @@ async function main() {
       {
         state: 'Pará',
         stateName: 'do Pará',
+        stateNormalized: 'para',
         primaryLawReference: 'IT Nº 02/2019',
         secondaryLawReference: 'IT Nº 02/2019',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -234,6 +248,7 @@ async function main() {
       {
         state: 'Paraíba',
         stateName: 'da Paraíba',
+        stateNormalized: 'paraiba',
         primaryLawReference: 'NT Nº 08/2024',
         secondaryLawReference: 'NT Nº 10/2024',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -246,6 +261,7 @@ async function main() {
       {
         state: 'Paraná',
         stateName: 'do Paraná',
+        stateNormalized: 'parana',
         primaryLawReference: 'NPT Nº 08/2011',
         secondaryLawReference: 'NPT Nº 10/2011',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -258,6 +274,7 @@ async function main() {
       {
         state: 'Pernambuco',
         stateName: 'de Pernambuco',
+        stateNormalized: 'pernambuco',
         primaryLawReference: 'IT Nº 08/2025',
         secondaryLawReference: 'IT Nº 10/2025',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -270,6 +287,7 @@ async function main() {
       {
         state: 'Piauí',
         stateName: 'do Piauí',
+        stateNormalized: 'piaui',
         primaryLawReference: 'NT Nº 08/2019',
         secondaryLawReference: 'NT Nº 10/2019',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -282,6 +300,7 @@ async function main() {
       {
         state: 'Rio de Janeiro',
         stateName: 'do Rio de Janeiro',
+        stateNormalized: 'rio de janeiro',
         primaryLawReference: 'NT Nº 02/2020',
         secondaryLawReference: 'NT Nº 02/2020',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -294,6 +313,7 @@ async function main() {
       {
         state: 'Rio Grande do Norte',
         stateName: 'do Rio Grande do Norte',
+        stateNormalized: 'rio grande do norte',
         primaryLawReference: 'IT Nº 08/2022',
         secondaryLawReference: 'IT Nº 10/2022',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -306,6 +326,7 @@ async function main() {
       {
         state: 'Rio Grande do Sul',
         stateName: 'do Rio Grande do Sul',
+        stateNormalized: 'rio grande do sul',
         primaryLawReference: 'IT Nº 08/2025',
         secondaryLawReference: 'IT Nº 10/2025',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -318,6 +339,7 @@ async function main() {
       {
         state: 'Rondônia',
         stateName: 'de Rondônia',
+        stateNormalized: 'rondonia',
         primaryLawReference: 'IT Nº 10/2017',
         secondaryLawReference: 'IT Nº 10/2017',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -330,6 +352,7 @@ async function main() {
       {
         state: 'Roraima',
         stateName: 'de Roraima',
+        stateNormalized: 'roraima',
         primaryLawReference: 'NT Nº 10/2021',
         secondaryLawReference: 'NT Nº 10/2021',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -342,6 +365,7 @@ async function main() {
       {
         state: 'Santa Catarina',
         stateName: 'de Santa Catarina',
+        stateNormalized: 'santa catarina',
         primaryLawReference: 'IN Nº 18/2024',
         secondaryLawReference: 'IN Nº 18/2024',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -354,6 +378,7 @@ async function main() {
       {
         state: 'São Paulo',
         stateName: 'de São Paulo',
+        stateNormalized: 'sao paulo',
         primaryLawReference: 'IT Nº 08/2025',
         secondaryLawReference: 'IT Nº 10/2025',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -366,6 +391,7 @@ async function main() {
       {
         state: 'Sergipe',
         stateName: 'de Sergipe',
+        stateNormalized: 'sergipe',
         primaryLawReference: 'IT Nº 10/2021',
         secondaryLawReference: 'IT Nº 10/2021',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',
@@ -378,6 +404,7 @@ async function main() {
       {
         state: 'Tocantins',
         stateName: 'do Tocantins',
+        stateNormalized: 'tocantins',
         primaryLawReference: 'NT Nº 35/2022',
         secondaryLawReference: 'NT Nº 35/2022',
         complementaryLawReference: 'Lei Complementar Nº 14.376/2013',

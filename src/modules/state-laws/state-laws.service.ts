@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { CreateStateLawDto } from './dto/create-state-law.dto';
 import { UpdateStateLawDto } from './dto/update-state-law.dto';
+import { normalizeString } from 'src/common/utils/normalize-string.utils';
 
 @Injectable()
 export class StateLawService {
@@ -12,6 +13,7 @@ export class StateLawService {
     const stateLaw = await this.prisma.stateLaw.create({
       data: {
         ...createStateLawDto,
+        stateNormalized: normalizeString(createStateLawDto.state),
       },
     });
 
@@ -44,12 +46,11 @@ export class StateLawService {
   }
 
   async findByState(state: string) {
+    const normalizedState = normalizeString(state);
+
     const stateLaw = await this.prisma.stateLaw.findFirst({
       where: {
-        state: {
-          equals: state,
-          mode: 'insensitive',
-        },
+        stateNormalized: normalizedState,
       },
     });
 
@@ -63,11 +64,15 @@ export class StateLawService {
   }
 
   async update(id: string, updateStateLawDto: UpdateStateLawDto) {
+    const data = { ...updateStateLawDto };
+
+    if (updateStateLawDto.state) {
+      data.stateNormalized = normalizeString(updateStateLawDto.state);
+    }
+
     const stateLaw = await this.prisma.stateLaw.update({
       where: { id },
-      data: {
-        ...updateStateLawDto,
-      },
+      data,
     });
 
     return stateLaw;

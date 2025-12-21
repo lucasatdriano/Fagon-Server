@@ -6,7 +6,7 @@ export const supabaseConfig = (
 ): SupabaseCustomConfig => {
   return {
     supabaseUrl: configService.get<string>('SUPABASE_URL', ''),
-    supabaseKey: configService.get<string>('SUPABASE_KEY', ''),
+    supabaseKey: configService.get<string>('SUPABASE_SERVICE_ROLE_KEY', ''),
     options: {
       auth: {
         autoRefreshToken: true,

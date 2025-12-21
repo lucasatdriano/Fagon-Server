@@ -232,6 +232,7 @@ model StateLaw {
   id                        String   @id @default(uuid())
   state                     String
   stateName                 String
+  stateNormalized           String
   primaryLawReference       String
   secondaryLawReference     String
   complementaryLawReference String?

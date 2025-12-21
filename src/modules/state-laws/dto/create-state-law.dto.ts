@@ -23,6 +23,15 @@ export class CreateStateLawDto {
 
   @Expose()
   @ApiProperty({
+    description: 'Nome do estado normalizado (sem acentos e em minúsculas)',
+    example: 'sao paulo',
+  })
+  @IsString()
+  @IsNotEmpty()
+  stateNormalized!: string;
+
+  @Expose()
+  @ApiProperty({
     description: 'Referência da lei 1',
     example: 'Lei Estadual Nº 12.345/2020',
   })

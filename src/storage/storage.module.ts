@@ -24,13 +24,13 @@ import { MulterModule } from '@nestjs/platform-express';
       provide: SupabaseClient,
       useFactory: (configService: ConfigService): SupabaseClient => {
         const url = configService.get<string>('SUPABASE_URL');
-        const key = configService.get<string>('SUPABASE_KEY');
+        const key = configService.get<string>('SUPABASE_SERVICE_ROLE_KEY');
 
         if (!url || !key) {
           throw new Error('Supabase URL and Secret Key must be provided');
         }
 
-        return createClient(url, key);
+        return createClient(url, key) as SupabaseClient;
       },
       inject: [ConfigService],
     },
