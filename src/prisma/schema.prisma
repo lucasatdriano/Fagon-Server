@@ -180,18 +180,18 @@ model MaterialFinishing {
   locationId        String
   surface           SurfaceType
   materialFinishing String
-  
-  location          Location            @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  location          Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
 }
 
 model Photo {
-  id             String   @id @default(uuid())
+  id             String         @id @default(uuid())
   locationId     String
   filePath       String
   selectedForPdf Boolean
   name           String?
   
-  location       Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  location       Location       @relation(fields: [locationId], references: [id], onDelete: Cascade)
 }
 
 model Pathology {

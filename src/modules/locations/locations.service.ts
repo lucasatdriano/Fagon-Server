@@ -160,7 +160,7 @@ export class LocationService {
   async remove(id: string, currentUser: { sub: string; role: string }) {
     if (currentUser.role === 'vistoriador') {
       throw new ForbiddenException(
-        'Vistoriadores não têm permissão para deletar patologia',
+        'Vistoriadores não têm permissão para deletar localização',
       );
     }
 
@@ -180,6 +180,18 @@ export class LocationService {
       ),
     );
 
+    await this.prisma.photo.deleteMany({
+      where: { locationId: id },
+    });
+
+    await this.prisma.materialFinishing.deleteMany({
+      where: { locationId: id },
+    });
+
+    const deletedLocation = await this.prisma.location.delete({
+      where: { id },
+    });
+
     if (location.pavement) {
       const locations = await this.findByPavement(location.pavement.id);
       const otherLocations = locations.filter((l) => l.id !== id);
@@ -193,10 +205,6 @@ export class LocationService {
         await this.pavementService.update(location.pavement.id, { height: 0 });
       }
     }
-
-    const deletedLocation = await this.prisma.location.delete({
-      where: { id },
-    });
 
     await this.logHelper.createLog(currentUser.sub, 'DELETE', 'Location', id);
 

@@ -30,7 +30,6 @@ async function bootstrap() {
   app.enableCors({
     origin: [
       'http://localhost:8080',
-      'http://localhost:3000',
       'https://fagon-server-c822.onrender.com',
       'https://fagon.vercel.app',
       'https://fagon-server.onrender.com',
@@ -64,7 +63,7 @@ async function bootstrap() {
   app.use(bodyParser.json({ limit: '50mb' }));
   app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   logger.log(`Application running on port ${port}`);
 }
 

@@ -9,10 +9,10 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../storage/storage.service';
-import { SupabaseClient } from '@supabase/supabase-js';
-import { InjectSupabaseClient } from 'nestjs-supabase-js';
 import { PathologyService } from '../pathologies/pathologies.service';
 import { ProjectService } from '../projects/projects.service';
+import sharp from 'sharp';
+import { PathologyPhoto } from '@prisma/client';
 
 @Injectable()
 export class PathologyPhotoService {
@@ -23,13 +23,12 @@ export class PathologyPhotoService {
     private pathologyService: PathologyService,
     @Inject(forwardRef(() => ProjectService))
     private projectService: ProjectService,
-    @InjectSupabaseClient() private supabase: SupabaseClient,
   ) {}
 
   async uploadPhotos(files: Express.Multer.File[], pathologyId: string) {
     const pathology = await this.pathologyService.findOne(pathologyId);
 
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB (igual ao PhotoService)
     const invalidFiles = files.filter(
       (file) =>
         file.size > MAX_FILE_SIZE || !file.mimetype?.startsWith('image/'),
@@ -41,53 +40,90 @@ export class PathologyPhotoService {
       );
     }
 
-    const existingPhotoCount = await this.prisma.pathologyPhoto.count({
+    const allPhotos = await this.prisma.pathologyPhoto.findMany({
       where: { pathologyId },
+      select: { name: true },
+    });
+
+    let maxPhotoNumber = 0;
+    allPhotos.forEach((photo) => {
+      if (photo.name) {
+        const match = photo.name.match(/Foto-Patologia(\d+)/);
+        if (match) {
+          const num = parseInt(match[1]);
+          if (num > maxPhotoNumber) {
+            maxPhotoNumber = num;
+          }
+        }
+      }
     });
 
     const project = await this.projectService.findOne(pathology.projectId);
+    const uploadedPhotos: PathologyPhoto[] = [];
 
     try {
-      const uploadedPhotos = await Promise.all(
-        files.map(async (file, index) => {
-          const photoNumber = existingPhotoCount + index + 1;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
 
-          const uploadResult = await this.storageService.uploadFile({
-            originalname: `patologia-${project.projectType}-${project.agency.agencyNumber}-${Date.now()}-${file.originalname}`,
-            buffer: file.buffer,
-            mimetype: file.mimetype || 'image/jpeg',
-            size: file.size,
-          });
+        console.log(`🔄 Processando arquivo de patologia ${i + 1}:`, {
+          name: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
+        });
 
-          return this.prisma.pathologyPhoto.create({
-            data: {
-              name: `Foto-Patologia${photoNumber}-${pathology.referenceLocation}`,
-              pathologyId,
-              filePath: uploadResult.key,
-            },
-            include: {
-              pathology: {
-                include: {
-                  project: {
-                    select: {
-                      id: true,
-                      upeCode: true,
-                    },
+        maxPhotoNumber++;
+
+        const timestamp = Date.now();
+        const uniqueFileName = `patologia-${project.projectType}-${project.agency.agencyNumber}-${timestamp}-${i}-${file.originalname}`;
+
+        const uploadResult = await this.storageService.uploadFile({
+          originalname: uniqueFileName,
+          buffer: file.buffer,
+          mimetype: file.mimetype || 'image/jpeg',
+          size: file.size,
+        });
+
+        const photoName = `Foto-Patologia${maxPhotoNumber}-${pathology.referenceLocation}`;
+
+        const newPhoto = await this.prisma.pathologyPhoto.create({
+          data: {
+            name: photoName,
+            pathologyId,
+            filePath: uploadResult.key,
+          },
+          include: {
+            pathology: {
+              include: {
+                project: {
+                  select: {
+                    id: true,
+                    upeCode: true,
+                  },
+                },
+                location: {
+                  select: {
+                    id: true,
+                    name: true,
                   },
                 },
               },
             },
-          });
-        }),
-      );
+          },
+        });
+
+        uploadedPhotos.push(newPhoto);
+      }
 
       return uploadedPhotos;
-    } catch {
-      throw new InternalServerErrorException('Falha ao fazer upload das fotos');
+    } catch (error) {
+      console.error('Upload error (patologia):', error);
+      throw new InternalServerErrorException(
+        'Falha ao fazer upload das fotos da patologia',
+      );
     }
   }
 
-  async getPhotoByPathology(id: string) {
+  async getPhotoById(id: string) {
     const photo = await this.prisma.pathologyPhoto.findUnique({
       where: { id },
       include: {
@@ -97,6 +133,13 @@ export class PathologyPhotoService {
               select: {
                 id: true,
                 upeCode: true,
+              },
+            },
+            location: {
+              select: {
+                id: true,
+                name: true,
+                locationType: true,
               },
             },
           },
@@ -117,8 +160,19 @@ export class PathologyPhotoService {
       include: {
         pathology: {
           include: {
-            project: true,
-            location: true,
+            project: {
+              select: {
+                id: true,
+                upeCode: true,
+              },
+            },
+            location: {
+              select: {
+                id: true,
+                name: true,
+                locationType: true,
+              },
+            },
           },
         },
       },
@@ -136,6 +190,89 @@ export class PathologyPhotoService {
     return photos;
   }
 
+  async rotatePhoto(
+    id: string,
+    rotation: number,
+    currentUser?: { role: string },
+  ) {
+    if (currentUser?.role === 'vistoriador') {
+      throw new ForbiddenException(
+        'Vistoriadores não têm permissão para rotacionar fotos da patologia',
+      );
+    }
+
+    const existingPhoto = await this.getPhotoById(id);
+
+    if (!existingPhoto.filePath) {
+      throw new BadRequestException(
+        'Caminho do arquivo não encontrado no banco de dados',
+      );
+    }
+
+    try {
+      const fileBuffer = await this.storageService.getFileBuffer(
+        existingPhoto.filePath,
+      );
+
+      let rotatedImage = sharp(fileBuffer.buffer);
+
+      if (rotation !== 0) {
+        rotatedImage = rotatedImage.rotate(rotation);
+      }
+
+      const rotatedBuffer = await rotatedImage.jpeg({ quality: 90 }).toBuffer();
+
+      await this.storageService.deleteFile(existingPhoto.filePath);
+
+      const pathology = await this.pathologyService.findOne(
+        existingPhoto.pathologyId,
+      );
+      const project = await this.projectService.findOne(pathology.projectId);
+
+      const uploadResult = await this.storageService.uploadFile({
+        originalname: `patologia-${project.projectType}-${project.agency.agencyNumber}-rotated-${Date.now()}.jpg`,
+        buffer: rotatedBuffer,
+        mimetype: 'image/jpeg',
+        size: rotatedBuffer.length,
+      });
+
+      const updatedPhoto = await this.prisma.pathologyPhoto.update({
+        where: { id },
+        data: {
+          filePath: uploadResult.key,
+        },
+        include: {
+          pathology: {
+            include: {
+              project: {
+                select: {
+                  id: true,
+                  upeCode: true,
+                },
+              },
+              location: {
+                select: {
+                  id: true,
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return {
+        ...updatedPhoto,
+        url: await this.storageService.getSignedUrl(updatedPhoto.filePath),
+      };
+    } catch (error) {
+      console.error('Erro detalhado ao rotacionar foto da patologia:', error);
+      throw new InternalServerErrorException(
+        'Falha ao rotacionar foto da patologia',
+      );
+    }
+  }
+
   async deletePhoto(id: string, currentUser?: { role: string }) {
     if (currentUser?.role === 'vistoriador') {
       throw new ForbiddenException(
@@ -145,7 +282,16 @@ export class PathologyPhotoService {
 
     const photo = await this.prisma.pathologyPhoto.findUnique({
       where: { id },
+      include: {
+        pathology: {
+          select: {
+            id: true,
+            title: true,
+          },
+        },
+      },
     });
+
     if (!photo) {
       throw new NotFoundException('Foto da patologia não encontrada');
     }
@@ -153,6 +299,10 @@ export class PathologyPhotoService {
     await this.storageService.deleteFile(photo.filePath);
     await this.prisma.pathologyPhoto.delete({ where: { id } });
 
-    return { success: true, message: 'Foto da patologia deletada com sucesso' };
+    return {
+      success: true,
+      message: 'Foto da patologia deletada com sucesso',
+      deletedPhoto: photo,
+    };
   }
 }

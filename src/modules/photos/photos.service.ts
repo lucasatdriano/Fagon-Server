@@ -4,20 +4,18 @@ import {
   forwardRef,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
-  Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { StorageService } from '../../storage/storage.service';
 import { LocationService } from '../locations/locations.service';
 import { ProjectService } from '../projects/projects.service';
 import sharp from 'sharp';
-import { PhotoResponseDto } from './dto/response-photo.dto';
+import { Photo } from '@prisma/client';
 
 @Injectable()
 export class PhotoService {
-  private readonly logger = new Logger(PhotoService.name);
-
   constructor(
     private prisma: PrismaService,
     private storageService: StorageService,
@@ -28,7 +26,8 @@ export class PhotoService {
   ) {}
 
   async uploadPhotos(files: Express.Multer.File[], locationId: string) {
-    this.logger.log(`🚀 Upload para location: ${locationId}`);
+    const location =
+      await this.locationService.validateLocationExists(locationId);
 
     const MAX_FILE_SIZE = 10 * 1024 * 1024;
     const invalidFiles = files.filter(
@@ -38,42 +37,45 @@ export class PhotoService {
 
     if (invalidFiles.length > 0) {
       throw new BadRequestException(
-        'Arquivos inválidos: tamanho máximo 10MB e apenas imagens são permitidas',
+        `Arquivos inválidos: tamanho máximo 10MB e apenas imagens são permitidas`,
       );
     }
 
-    const location = await this.prisma.location.findUnique({
-      where: { id: locationId },
-      include: { project: { include: { agency: true } } },
+    const allPhotos = await this.prisma.photo.findMany({
+      where: { locationId },
+      select: { name: true },
     });
 
-    if (!location?.project) {
-      throw new NotFoundException('Projeto não encontrado');
-    }
-
-    const project = location.project;
-
-    return await this.prisma.$transaction(async (tx) => {
-      const lastPhoto = await tx.photo.findFirst({
-        where: { locationId },
-        orderBy: { name: 'desc' },
-      });
-
-      let lastPhotoNumber = 0;
-      if (lastPhoto?.name) {
-        const match = lastPhoto.name.match(/Foto(\d+)/);
+    let maxPhotoNumber = 0;
+    allPhotos.forEach((photo) => {
+      if (photo.name) {
+        const match = photo.name.match(/Foto(\d+)/);
         if (match) {
-          lastPhotoNumber = parseInt(match[1], 10);
+          const num = parseInt(match[1]);
+          if (num > maxPhotoNumber) {
+            maxPhotoNumber = num;
+          }
         }
       }
+    });
 
-      const uploadedPhotos: PhotoResponseDto[] = [];
-      for (let index = 0; index < files.length; index++) {
-        const file = files[index];
-        const photoNumber = lastPhotoNumber + index + 1;
+    const project = await this.projectService.findOne(location.projectId);
+    const uploadedPhotos: Photo[] = [];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
+        console.log(`🔄 Processando arquivo ${i + 1}:`, {
+          name: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
+        });
+
+        maxPhotoNumber++;
+
         const timestamp = Date.now();
-
-        const uniqueFileName = `${project.projectType}-${project.agency.agencyNumber}-${timestamp}-${photoNumber}.jpg`;
+        const uniqueFileName = `${project.projectType}-${project.agency.agencyNumber}-${timestamp}-${i}-${file.originalname}`;
 
         const uploadResult = await this.storageService.uploadFile({
           originalname: uniqueFileName,
@@ -82,40 +84,37 @@ export class PhotoService {
           size: file.size,
         });
 
-        const photoName = `Foto${photoNumber}-${location.name.replace(/\s+/g, '_')}`;
+        const photoName = `Foto${maxPhotoNumber}-${location.name}`;
 
-        const savedPhoto = await tx.photo.create({
+        const newPhoto = await this.prisma.photo.create({
           data: {
             name: photoName,
             locationId,
             filePath: uploadResult.key,
             selectedForPdf: false,
           },
-          include: {
-            location: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
-          },
         });
 
-        const photoResponse: PhotoResponseDto = {
-          id: savedPhoto.id,
-          name: savedPhoto.name || 'Foto',
-          locationId: savedPhoto.locationId,
-          filePath: savedPhoto.filePath,
-          selectedForPdf: savedPhoto.selectedForPdf,
-          location: savedPhoto.location,
-        };
-
-        uploadedPhotos.push(photoResponse);
+        uploadedPhotos.push(newPhoto);
       }
 
-      this.logger.log(`✅ Upload concluído: ${uploadedPhotos.length} fotos`);
       return uploadedPhotos;
+    } catch (error) {
+      console.error('Upload error:', error);
+      throw new InternalServerErrorException('Falha ao fazer upload das fotos');
+    }
+  }
+
+  async getPhotoById(id: string) {
+    const photo = await this.prisma.photo.findUnique({
+      where: { id },
     });
+
+    if (!photo) {
+      throw new NotFoundException('Foto não encontrada');
+    }
+
+    return photo;
   }
 
   async getPhotosByLocation(locationId: string, includeSignedUrl = false) {
@@ -135,16 +134,12 @@ export class PhotoService {
       return Promise.all(
         photos.map(async (photo) => ({
           ...photo,
-          name: photo.name || 'Foto sem nome',
           signedUrl: await this.storageService.getSignedUrl(photo.filePath),
         })),
       );
     }
 
-    return photos.map((photo) => ({
-      ...photo,
-      name: photo.name || 'Foto sem nome',
-    }));
+    return photos;
   }
 
   async updatePhoto(
@@ -173,7 +168,6 @@ export class PhotoService {
 
     return {
       ...photo,
-      name: photo.name || 'Foto sem nome',
       url: await this.storageService.getSignedUrl(photo.filePath),
     };
   }
@@ -189,13 +183,7 @@ export class PhotoService {
       );
     }
 
-    const existingPhoto = await this.prisma.photo.findUnique({
-      where: { id },
-    });
-
-    if (!existingPhoto) {
-      throw new NotFoundException('Foto não encontrada');
-    }
+    const existingPhoto = await this.getPhotoById(id);
 
     if (!existingPhoto.filePath) {
       throw new BadRequestException(
@@ -203,52 +191,55 @@ export class PhotoService {
       );
     }
 
-    const fileBuffer = await this.storageService.getFileBuffer(
-      existingPhoto.filePath,
-    );
+    try {
+      const fileBuffer = await this.storageService.getFileBuffer(
+        existingPhoto.filePath,
+      );
 
-    let rotatedImage = sharp(fileBuffer.buffer);
+      let rotatedImage = sharp(fileBuffer.buffer);
 
-    if (rotation !== 0) {
-      rotatedImage = rotatedImage.rotate(rotation);
-    }
+      if (rotation !== 0) {
+        rotatedImage = rotatedImage.rotate(rotation);
+      }
 
-    const rotatedBuffer = await rotatedImage.jpeg({ quality: 90 }).toBuffer();
+      const rotatedBuffer = await rotatedImage.jpeg({ quality: 90 }).toBuffer();
 
-    await this.storageService.deleteFile(existingPhoto.filePath);
+      await this.storageService.deleteFile(existingPhoto.filePath);
 
-    const location = await this.locationService.validateLocationExists(
-      existingPhoto.locationId,
-    );
-    const project = await this.projectService.findOne(location.projectId);
+      const location = await this.locationService.validateLocationExists(
+        existingPhoto.locationId,
+      );
+      const project = await this.projectService.findOne(location.projectId);
 
-    const uploadResult = await this.storageService.uploadFile({
-      originalname: `${project.projectType}-${project.agency.agencyNumber}-rotated-${Date.now()}.jpg`,
-      buffer: rotatedBuffer,
-      mimetype: 'image/jpeg',
-      size: rotatedBuffer.length,
-    });
+      const uploadResult = await this.storageService.uploadFile({
+        originalname: `${project.projectType}-${project.agency.agencyNumber}-rotated-${Date.now()}.jpg`,
+        buffer: rotatedBuffer,
+        mimetype: 'image/jpeg',
+        size: rotatedBuffer.length,
+      });
 
-    const updatedPhoto = await this.prisma.photo.update({
-      where: { id },
-      data: {
-        filePath: uploadResult.key,
-      },
-      include: {
-        location: {
-          select: {
-            id: true,
-            name: true,
+      const updatedPhoto = await this.prisma.photo.update({
+        where: { id },
+        data: {
+          filePath: uploadResult.key,
+        },
+        include: {
+          location: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    return {
-      ...updatedPhoto,
-      name: updatedPhoto.name || 'Foto sem nome',
-      url: await this.storageService.getSignedUrl(updatedPhoto.filePath),
-    };
+      return {
+        ...updatedPhoto,
+        url: await this.storageService.getSignedUrl(updatedPhoto.filePath),
+      };
+    } catch (error) {
+      console.error('Erro detalhado ao rotacionar foto:', error);
+    }
   }
 
   async deletePhoto(id: string, currentUser?: { role: string }) {

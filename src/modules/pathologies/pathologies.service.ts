@@ -181,6 +181,10 @@ export class PathologyService {
       ),
     );
 
+    await this.prisma.pathologyPhoto.deleteMany({
+      where: { pathologyId: id },
+    });
+
     await this.prisma.pathology.delete({ where: { id } });
 
     await this.logHelper.createLog(

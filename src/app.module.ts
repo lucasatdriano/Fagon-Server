@@ -45,10 +45,6 @@ import { DistanceModule } from './modules/distances/distance.module';
       },
     }),
     ScheduleModule.forRoot(),
-    // ServeStaticModule.forRoot({
-    //   rootPath: join(__dirname, '..', 'public'),
-    //   exclude: ['/api*'],
-    // }),
     SwaggerModule,
     LoggerModule,
     FlagsModule,
