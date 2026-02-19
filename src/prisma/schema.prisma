@@ -69,7 +69,7 @@ model Agency {
   id           String    @id @default(uuid())
   name         String
   agencyNumber Int
-  cnpj         String?   @unique @default("NULL")
+  cnpj         String?   @default("NULL")
   cep          String
   state        String
   city         String
